@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Things from the DPLA about a place</title>
+	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+	<style>
+		html{background: url(img/cartographer.png);}
+		body{background-color: transparent; font-size: 16px;}
+		header{padding: 4% 0; color: #fff;}
+		header h1{font-size: 48px;}
+		.content{padding: 2% 0;}
+		#place-search .form-group{display: block;}
+		#place{width: 86%;}
+		#place-search button[type=submit]{width: 13%;}
+		.results-wrap{display: none; margin-top: 2%; padding: 2%; background: rgba(0,0,0, .3); border-radius: 5px; color: #fff;}
+		#search-message{margin-bottom: 3%; color: #888;}
+		.media a{max-width: 30%;}
+		.media-object{width: 100%;}
+		#pagination{margin-top: 3%; text-align: center;}
+	</style>
+</head>
+<body>
+	<header>
+		<div class="container">
+			<div class="row">
+				<div class="col-md-10">
+					<h1>Let's find items from the DPLA that are about a place!</h1>
+				</div>
+				<div class="col-md-2">
+					<img src="img/map-marker-13.png" style="width: 100%;">
+				</div>
+			</div>
+		</div>
+	</header>
+	<div class="content">
+		<div class="container">
+			<div class="row">
+				<div class="col-md-12">
+					<form id="place-search" class="form-inline">
+						<div class="form-group">
+							<label class="sr-only" for="place">Enter a place&hellip;</label>
+							<input type="text" class="form-control input-lg" id="place" placeholder="Enter a place&hellip;">
+							<button type="submit" class="btn btn-primary input-lg">Find something</button>
+						</div>
+					</form>
+				</div>
+			</div><!--end of row-->
+			<div class="row">
+				<div class="col-md-12">
+					<div class="results-wrap">
+						<div id="search-message"></div>
+						<div id="titles"></div>
+						<div id="pagination">
+							<ul id="docs-pager" class="pager">
+								<li class="previous disabled"><a id="prev" class="docs-nav" href="#">&larr; Previous</a></li>
+  								<li class="next"><a id="next" class="docs-nav" href="#">Next &rarr;</a></li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</div><!--end of row-->
+		</div><!--end of container-->
+	</div><!--end of content-->
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.0/jquery.min.js"></script>
+	<script>
+		var current_page, step, pages, place;
+		var fetch_docs = function(place, current_page){
+			var url = 'http://api.dp.la/v2/items?sourceResource.spatial.name=' + place + '&page=' + current_page + '&callback=?&api_key=85b984a97cae9f9f7d73e55873bd7593';
+			
+			$('#titles').empty();
+
+			$.getJSON(encodeURI(url), function(data){
+				var docs = data.docs;
+				step = data.limit;
+				pages = Math.ceil(data.count / step);
+
+				if (pages != 0){
+					$.each(docs, function(i){
+						var doc_title = (docs[i].sourceResource.title != undefined ? docs[i].sourceResource.title : '');
+						var doc_link = (docs[i].isShownAt != undefined ? docs[i].isShownAt : '');
+						var doc_thumb = (docs[i].object != undefined ? docs[i].object : '');
+						var doc_description = (docs[i].sourceResource.description != undefined ? docs[i].sourceResource.description[0] : '');	
+
+						$('#titles').append('<div class="media"><a class="pull-left" href="' + doc_link + '" target="_blank"><img class="media-object" src="' + doc_thumb + '" alt="' + doc_title + '"></a><div class="media-body"><h4 class="media-heading"><a href="' + doc_link + '" target="_blank">' + doc_title + '</a></h4><p>' + doc_description + '</p></div></div>');
+					});
+
+					if (pages == 1){
+						$('#pagination').hide();
+					}
+				}
+				else{
+					$('#pagination').hide();
+				}
+
+				$('header').hide();
+				$('#search-message').html('<p>We found ' + data.count + ' documents from ' + place + '. This is page ' + current_page + '.');
+				$('.results-wrap').fadeIn();
+
+			});
+		}
+
+		$(document).ready(function(){
+
+			current_page = 1;
+
+			$('#place').click(function(){
+				if ($('#titles:not(:empty)')){
+					$(this).val('');
+					$('#titles').empty();
+					$('#search-message').empty();
+					$('.results-wrap').hide();
+					$('#pagination').show();
+					$('#docs-pager .next').removeClass('disabled');
+				}
+			});
+			$('#place-search').submit(function(){
+				place = $('#place').val();
+				fetch_docs(place, current_page);
+				return false;
+			});
+
+			$('.docs-nav').click(function(){
+				if (pages > 1){
+					var direction = $(this).attr('id');
+
+					if (direction == 'prev'){
+						(current_page != 1 ? current_page = current_page - 1 : current_page = 1);
+					}
+					else if (direction == 'next'){
+						(current_page != pages ? current_page = current_page + 1 : current_page = pages);
+					}
+
+					if (current_page == 1){
+						$('#docs-pager .previous').addClass('disabled');
+					}
+					else if (current_page > 1 && current_page < pages){
+						$('#docs-pager .previous').removeClass('disabled');
+						$('#docs-pager .next').removeClass('disabled');
+					}
+					else if (current_page == pages){
+						$('#docs-pager .next').addClass('disabled');
+					}
+
+					fetch_docs(place, current_page);
+				}
+			});
+			
+		});
+	</script>
+</body>
+</html>
